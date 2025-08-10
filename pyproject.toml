@@ -1,0 +1,26 @@
+[project]
+name = "flowander"
+version = "0.1.0"
+description = "An Exploration of flow matching"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel>=6.30.0",
+    "matplotlib>=3.10.3",
+    "numpy>=2.3.2",
+    "pyqt6>=6.9.1",
+    "scikit-learn>=1.7.1",
+    "scipy>=1.16.1",
+    "seaborn>=0.13.2",
+    "torch>=2.7.1",
+    "tqdm>=4.67.1",
+]
+
+[dependency-groups]
+dev = [
+    "ipdb>=0.13.13",
+]
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
