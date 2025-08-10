@@ -14,13 +14,22 @@ from flowander.config import WEIGHTS_DIR, FIGS_DIR
 from example_2d_configs import config
 import argparse
 
+
+parser = argparse.ArgumentParser(description="Show marginal GT vs simulated paths")
+parser.add_argument("--num_samples", type=int, default=50000, help="Number of samples")
+parser.add_argument("--num_marginals", type=int, default=5, help="Number of marginals to plot")
+parser.add_argument("--nfe", type=int, default=500, help="Number of function evaluations (steps)")
+parser.add_argument("--dt_animation", type=int, default=4, help="Time taken by the animation")
+
+args = parser.parse_args()
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # model_name = "vf_gcpp_gaussian2GM"
 # model_name = "vf_gcpp_gaussian2Moons"
 # model_name = "vf_gcpp_gaussian2Circles"
 # model_name = "vf_gcpp_gaussian2Check"
-# model_name = "vf_linear_mlp_gaussian2Checker"
-model_name = "vf_linear_multi_mlp_gaussian2Checker"
+model_name = "vf_linear_mlp_gaussian2Checker"
+# model_name = "vf_linear_multi_mlp_gaussian2Checker"
 # model_name = "vf_linear_mlp_circles2Checker"
 # model_name = "vf_linear_multi_mlp_circles2Checker"
 # kwargs = {"bs_multisample"}
@@ -36,13 +45,6 @@ if model_checkpoint.exists():
     flow_model.load_state_dict(torch.load(model_checkpoint))
 flow_model.eval()
 
-parser = argparse.ArgumentParser(description="Show marginal GT vs simulated paths")
-parser.add_argument("--num_samples", type=int, default=50000, help="Number of samples")
-parser.add_argument("--num_marginals", type=int, default=5, help="Number of marginals to plot")
-parser.add_argument("--nfe", type=int, default=500, help="Number of function evaluations (steps)")
-parser.add_argument("--dt_animation", type=int, default=4, help="Time taken by the animation")
-
-args = parser.parse_args()
 
 num_samples = args.num_samples
 num_marginals = args.num_marginals

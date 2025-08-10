@@ -3,16 +3,17 @@ from flowander.distributions import CheckerboardSampleable, CirclesSampleable, G
 from flowander.mlp import MLPVectorField
 
 
-def config(model_name, device):
+def config(
+        model_name, 
+        device, 
+        bs_joint_sampler=20, 
+        method_js="linear_sum_assignment",
+    ):
     # mostly used
     p_simple = Gaussian.isotropic(dim=2, std=1.0)
     flow_model = MLPVectorField(dim=2, hiddens=[64,64,64,64])
     alpha = LinearAlpha()
     beta = SquareRootBeta()
-
-    bs_joint_sampler = 20
-    method_js = "linear_sum_assignment"
-    # method_js = "exact_emd"
 
     match model_name:
         case "vf_gcpp_gaussian2GM":

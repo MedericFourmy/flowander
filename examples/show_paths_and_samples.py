@@ -29,12 +29,12 @@ sigma = 0.5
 # Setup path and plot  #
 ########################
 # Constants for the duration of our use of Gaussian conditional probability paths, to avoid polluting the namespace...
-model_name = "vf_gcpp_gaussian2GM"
+# model_name = "vf_gcpp_gaussian2GM"
 # model_name = "vf_gcpp_gaussian2Moons"
-model_name = "vf_gcpp_gaussian2Circles"
+# model_name = "vf_gcpp_gaussian2Circles"
 # model_name = "vf_gcpp_gaussian2Check"
 # model_name = "vf_linear_mlp_gaussian2Checker"
-# model_name = "vf_linear_multi_mlp_gaussian2Checker"
+model_name = "vf_linear_multi_mlp_gaussian2Checker"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

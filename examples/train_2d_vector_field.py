@@ -10,8 +10,9 @@ from example_2d_configs import config
 # batch_size = 1000
 # num_epochs = 5000
 # linear flows
-batch_size = 2000
-num_epochs = 10000
+batch_size = 128
+num_epochs = 100000
+bs_joint_sampler = None
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -24,7 +25,7 @@ model_name = "vf_linear_multi_mlp_gaussian2Checker"
 # model_name = "vf_linear_mlp_circles2Checker"
 # model_name = "vf_linear_multi_mlp_circles2Checker"
 
-p_simple, p_data, path, flow_model = config(model_name, device)
+p_simple, p_data, path, flow_model = config(model_name, device, bs_joint_sampler=bs_joint_sampler)
 
 trainer = ConditionalFlowMatchingTrainer(path, flow_model)
 losses = trainer.train(num_epochs=num_epochs, device=device, lr=1e-3, batch_size=batch_size)
