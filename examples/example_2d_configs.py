@@ -10,6 +10,10 @@ def config(model_name, device):
     alpha = LinearAlpha()
     beta = SquareRootBeta()
 
+    bs_joint_sampler = 20
+    method_js = "linear_sum_assignment"
+    # method_js = "exact_emd"
+
     match model_name:
         case "vf_gcpp_gaussian2GM":
             p_data = GaussianMixture.symmetric_2D(nmodes=5, std=1.0, scale=10.0).to(device)
@@ -33,7 +37,7 @@ def config(model_name, device):
 
         case "vf_linear_multi_mlp_gaussian2Checker":
             p_data = CheckerboardSampleable(device, grid_size=4)
-            path = LinearMultisampleConditionalProbabilityPath(p_simple, p_data).to(device)
+            path = LinearMultisampleConditionalProbabilityPath(p_simple, p_data, method_js, bs_joint_sampler).to(device)
 
         case "vf_linear_mlp_circles2Checker":
             p_simple = CirclesSampleable(device)
@@ -43,7 +47,7 @@ def config(model_name, device):
         case "vf_linear_multi_mlp_circles2Checker":
             p_simple = CirclesSampleable(device)
             p_data = CheckerboardSampleable(device, grid_size=4)
-            path = LinearMultisampleConditionalProbabilityPath(p_simple, p_data).to(device)
+            path = LinearMultisampleConditionalProbabilityPath(p_simple, p_data, method_js, bs_joint_sampler).to(device)
 
         case _:
             raise ValueError(f"{model_name} is not a valid example config")

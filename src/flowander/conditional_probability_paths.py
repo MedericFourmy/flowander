@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
+from typing import Union
 import torch
 from torch.func import vmap, jacrev
 
 from flowander.distributions import Sampleable, Gaussian
+from flowander.joint_sampler import JointSampler
 
 
 class ConditionalProbabilityPath(torch.nn.Module, ABC):
@@ -306,11 +308,36 @@ class LinearConditionalProbabilityPath(ConditionalProbabilityPath):
         raise Exception("You should not be calling this function!")
 
 
-from scipy.optimize import linear_sum_assignment
+def squared_euclidean_distance(xx, yy):
+    """
+    Compute squared Euclidean distance between batched vectors.
+    
+    Args:
+        xx: tensor of shape (batch_size, N, feature_dim)
+        yy: tensor of shape (batch_size, M, feature_dim)
+    
+    Returns:
+        C: tensor of shape (batch_size, N, M) containing squared distances
+    """
+    # Compute squared norms for each vector
+    xx_norm_sq = torch.sum(xx**2, dim=2, keepdim=True)  # Shape: (batch_size, N, 1)
+    yy_norm_sq = torch.sum(yy**2, dim=2, keepdim=True)  # Shape: (batch_size, M, 1)
+    
+    # Compute dot products between all pairs using batch matrix multiplication
+    xy = torch.bmm(xx, yy.transpose(1, 2))  # Shape: (batch_size, N, M)
+    
+    # Apply the identity: ||x - y||² = ||x||² + ||y||² - 2⟨x, y⟩
+    C = xx_norm_sq + yy_norm_sq.transpose(1, 2) - 2 * xy
+    
+    return C
+
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 class LinearMultisampleConditionalProbabilityPath(ConditionalProbabilityPath):
-    def __init__(self, p_simple: Sampleable, p_data: Sampleable):
+    def __init__(self, p_simple: Sampleable, p_data: Sampleable, method: str = "exact_emd", bs_joint_sampler: Union[None,int] = None):
         super().__init__(p_simple, p_data)
+        self.joint_sampler = JointSampler(method)
+        self.bs_joint_sampler = bs_joint_sampler
 
     def sample_conditioning_variable(self, num_samples: int) -> torch.Tensor:
         """
@@ -321,6 +348,21 @@ class LinearMultisampleConditionalProbabilityPath(ConditionalProbabilityPath):
             - z: samples from p(z), (num_samples, ...)
         """
         return self.p_data.sample(num_samples)
+
+    def sample_conditional_path(self, z: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        """
+        TODO
+
+        Args:
+            - z: conditioning variable (num_samples, dim)
+            - t: time (num_samples, 1)
+        Returns:
+            - x: samples from p_t(x|z), (num_samples, dim)
+        """
+        x0 = self.p_simple.sample(z.shape[0])
+        x0, z = self.joint_sampler(x0)
+        return (1 - t) * x0 + t * z    
+
     
     def sample_conditional_path(self, z: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         """
@@ -335,33 +377,37 @@ class LinearMultisampleConditionalProbabilityPath(ConditionalProbabilityPath):
 
         x0 = self.p_simple.sample(z.shape[0])
 
-        bs = 50
-        dim = x0.shape[-1]
-
+        # check the joint sampler batch size
+        bs = self.bs_joint_sampler if self.bs_joint_sampler is not None else z.shape[0]
+        if bs > z.shape[0]:
+            bs = z.shape[0]
         assert z.shape[0] % bs == 0
+
+        # batch the data according to the joint sampler batch size
         nb_batches = z.shape[0] // bs
+        dim = x0.shape[-1]
         zz = z.reshape(nb_batches, bs, dim)
         xx0 = x0.reshape(nb_batches, bs, dim)
-        Cc = torch.cdist(xx0, zz)**2
 
-        # minibatch multisample
-        import concurrent.futures
+        # compute the 
+        Cc = squared_euclidean_distance(xx0, zz)
 
-        def solve_assignment(C):
-            rows, cols = linear_sum_assignment(C.cpu().numpy())
+        def sample_plan(C):
+            rows, cols = self.joint_sampler.sample_plan(C)
             return torch.from_numpy(cols)
 
         # start_time = time.time()
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(solve_assignment, Cc[batch_idx]) for batch_idx in range(nb_batches)]
+        Cc = Cc.cpu().numpy()
+        # not really good for parallelization...
+        with ThreadPoolExecutor() as executor:
+        # with ProcessPoolExecutor() as executor:  # TODO: not working cause sample_plan is not pickleable
+            futures = [executor.submit(sample_plan, Cc[batch_idx]) for batch_idx in range(nb_batches)]
             results = [future.result() for future in futures]
 
         for batch_idx, cols in enumerate(results):
             start_idx = batch_idx * bs
             end_idx = start_idx + bs
             z[start_idx:end_idx] = z[start_idx + cols]
-
-        # print(f"nb_batches={nb_batches}, Assignment took {time.time() - start_time:.2f} seconds")
 
         return (1 - t) * x0 + t * z    
 
